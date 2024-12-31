@@ -1,4 +1,4 @@
-name: Notify Telegram on PR Merge
+name: Notify Telegram on PR Close
 
 on:
   pull_request:
@@ -6,20 +6,34 @@ on:
       - closed
 
 jobs:
-  notify:
-    if: github.event.pull_request.merged == true
+  notify-telegram:
     runs-on: ubuntu-latest
+
     steps:
       - name: Send Telegram Notification
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
         run: |
-          curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
-          -H "Content-Type: application/json" \
-          -d @- <<EOF
-          {
-            "chat_id": "$TELEGRAM_CHAT_ID",
-            "text": "Pull Request Merged 🎉\nOrganization: ${{ github.organization }}\nRepository: ${{ github.repository }}\nPR Title: ${{ github.event.pull_request.title }}\nMerged by: ${{ github.event.pull_request.merged_by.login }}"
-          }
-          EOF
+          if [ "${{ github.event.pull_request.merged }}" == "true" ]; then
+            PR_TITLE="${{ github.event.pull_request.title }}"
+            PR_URL="${{ github.event.pull_request.html_url }}"
+            PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+            
+            MESSAGE="🔔 *Pull Request Merged!*\n\n"
+            MESSAGE+="*Title:* $PR_TITLE\n"
+            MESSAGE+="*Author:* $PR_AUTHOR\n"
+            MESSAGE+="[View PR]($PR_URL)"
+            
+            curl -s -X POST https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage \
+              -H "Content-Type: application/json" \
+              -d '{
+                "chat_id": "'$TELEGRAM_CHAT_ID'",
+                "message_thread_id": '$TELEGRAM_TOPIC_ID',
+                "text": "'"$MESSAGE"'",
+                "parse_mode": "Markdown"
+              }'
+          else
+            echo "Pull request was closed but not merged. Skipping notification."
+          fi
