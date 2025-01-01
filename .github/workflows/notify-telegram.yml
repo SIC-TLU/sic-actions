@@ -1,39 +1,33 @@
-name: Notify Telegram on PR Close
+name: Notify Telegram
 
 on:
-  pull_request:
-    types:
-      - closed
+  workflow_call:
+    inputs:
+      TELEGRAM_BOT_TOKEN:
+        required: true
+        type: string
+      TELEGRAM_CHAT_ID:
+        required: true
+        type: string
+      TELEGRAM_TOPIC_ID:
+        required: false
+        type: string
 
 jobs:
-  notify-telegram:
+  send-notification:
     runs-on: ubuntu-latest
-
     steps:
       - name: Send Telegram Notification
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ inputs.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ inputs.TELEGRAM_CHAT_ID }}
+          TELEGRAM_TOPIC_ID: ${{ inputs.TELEGRAM_TOPIC_ID }}
         run: |
-          if [ "${{ github.event.pull_request.merged }}" == "true" ]; then
-            PR_TITLE="${{ github.event.pull_request.title }}"
-            PR_URL="${{ github.event.pull_request.html_url }}"
-            PR_AUTHOR="${{ github.event.pull_request.user.login }}"
-            
-            MESSAGE="🔔 *Pull Request Merged!*\n\n"
-            MESSAGE+="*Title:* $PR_TITLE\n"
-            MESSAGE+="*Author:* $PR_AUTHOR\n"
-            MESSAGE+="[View PR]($PR_URL)"
-            
-            curl -s -X POST https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage \
-              -H "Content-Type: application/json" \
-              -d '{
-                "chat_id": "'$TELEGRAM_CHAT_ID'",
-                "message_thread_id": '$TELEGRAM_TOPIC_ID',
-                "text": "'"$MESSAGE"'",
-                "parse_mode": "Markdown"
-              }'
-          else
-            echo "Pull request was closed but not merged. Skipping notification."
-          fi
+          curl -s -X POST https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage \
+            -H "Content-Type: application/json" \
+            -d '{
+              "chat_id": "'$TELEGRAM_CHAT_ID'",
+              "message_thread_id": '$TELEGRAM_TOPIC_ID',
+              "text": "Notification from reusable workflow",
+              "parse_mode": "Markdown"
+            }'
